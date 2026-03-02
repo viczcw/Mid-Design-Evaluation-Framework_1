@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mid-Design Evaluation Framework</title>
+  <style>
+    :root{
+      --bg:#ffffff;
+      --panel:#ffffff;
+      --panel2:#ffffff;
+      --text:#0f172a;      /* slate-900 */
+      --muted:#475569;     /* slate-600 */
+      --border:rgba(15,23,42,.12);
+      --shadow: 0 10px 30px rgba(2,6,23,.10);
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; background: var(--bg); color:var(--text);}
+    a{color:inherit}
+    header{padding:28px 18px 10px; max-width:1100px; margin:0 auto;}
+    h1{margin:0 0 6px; font-size: clamp(22px, 3vw, 34px); letter-spacing:.2px}
+    p.lede{margin:0; color:var(--muted); line-height:1.5}
+
+    .wrap{max-width:1100px; margin:0 auto; padding:18px; display:grid; grid-template-columns: 360px 1fr; gap:16px; align-items:start;}
+    @media (max-width: 920px){ .wrap{grid-template-columns:1fr;} }
+
+    .card{background: var(--panel); border:1px solid var(--border); border-radius:var(--radius); box-shadow: var(--shadow); overflow:hidden;}
+    .card h2{margin:0; font-size:16px; letter-spacing:.3px}
+    .card .hd{display:flex; align-items:center; justify-content:space-between; padding:14px 14px; border-bottom:1px solid var(--border); background: rgba(2,6,23,.02)}
+    .card .bd{padding:14px}
+
+    .pill{font-size:12px; color:var(--muted); border:1px solid var(--border); padding:6px 10px; border-radius:999px; background: rgba(2,6,23,.02)}
+
+    .search{display:flex; gap:10px; align-items:center; margin-bottom:10px}
+    .search input{width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background: #ffffff; color:var(--text); outline:none;}
+
+    .list{display:flex; flex-direction:column; gap:8px;}
+    .item{cursor:pointer; padding:10px 10px; border-radius:14px; border:1px solid var(--border); background: rgba(2,6,23,.02); transition: transform .08s ease, background .15s ease, border-color .15s ease;}
+    .item:hover{transform: translateY(-1px); background: rgba(2,6,23,.04)}
+    .item.active{border-color: rgba(15,23,42,.30); background: rgba(2,6,23,.05)}
+    .item .t{font-weight:650}
+    .item .d{font-size:12px; color:var(--muted); margin-top:4px; line-height:1.35}
+
+    .grid{display:grid; grid-template-columns: 1fr 320px; gap:16px; align-items:start;}
+    @media (max-width: 920px){ .grid{grid-template-columns:1fr;} }
+
+    .kvs{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
+    .tag{font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid var(--border); background: rgba(2,6,23,.02); color:var(--muted)}
+
+    .section-title{font-size:12px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); margin:16px 0 8px}
+
+    /* Make definition more visible */
+    #definition{font-size:16px; line-height:1.6; color:var(--text); font-weight:600}
+
+    .checklist{display:flex; flex-direction:column; gap:8px}
+    label.chk{display:flex; gap:10px; align-items:flex-start; padding:10px; border:1px solid var(--border); border-radius:14px; background: rgba(2,6,23,.02)}
+    label.chk span{line-height:1.35}
+    input[type="checkbox"]{margin-top:2px; width:16px; height:16px}
+
+    .inline-input{flex:1; min-width: 160px; padding:8px 10px; border-radius:12px; border:1px solid var(--border); background:#ffffff; color:var(--text); outline:none;}
+
+    textarea{width:100%; min-height:120px; padding:10px 12px; border-radius:14px; border:1px solid var(--border); background: #ffffff; color:var(--text); outline:none; resize:vertical}
+
+    .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
+    button{cursor:pointer; padding:10px 12px; border-radius:14px; border:1px solid var(--border); background: rgba(2,6,23,.02); color:var(--text); font-weight:650}
+    button:hover{background: rgba(2,6,23,.04)}
+
+    .small{font-size:12px; color:var(--muted); line-height:1.45}
+
+    canvas{width:100%; height:auto; background: #ffffff; border:1px solid var(--border); border-radius:16px}
+
+    footer{max-width:1100px; margin:0 auto; padding:0 18px 28px; color:var(--muted); font-size:12px; line-height:1.5}
+  </style>
+</head>
+<body>
+<header>
+  <h1>Mid-Design Evaluation Framework (Interactive)</h1>
+  <p class="lede">Select an implementation outcome, check off who you consulted, what you did, and export a lightweight summary for your project log.</p>
+</header>
+
+<main class="wrap">
+  <!-- LEFT: outcomes list -->
+  <section class="card" aria-label="Outcomes">
+    <div class="hd">
+      <h2>Implementation outcomes</h2>
+      <span class="pill" id="countPill">8 outcomes</span>
+    </div>
+    <div class="bd">
+      <div class="search">
+        <input id="q" placeholder="Search (e.g., feasibility, cost, NoMAD)…" />
+      </div>
+      <div class="list" id="list"></div>
+      <div class="small" style="margin-top:10px">Tip: your selections are stored locally in your browser (localStorage).</div>
+    </div>
+  </section>
+
+  <!-- RIGHT: details + radar -->
+  <section class="card" aria-label="Details">
+    <div class="hd">
+      <div>
+        <h2 id="outcomeTitle">Outcome</h2>
+        <div class="kvs" id="kvs"></div>
+      </div>
+      <span class="pill" id="stagePill">Mid-design</span>
+    </div>
+
+    <div class="bd">
+      <div class="grid">
+        <div>
+          <div class="section-title">Definition</div>
+          <div id="definition" class="small"></div>
+
+          <div class="section-title">Stakeholders to consult</div>
+          <div class="checklist" id="stakeholders"></div>
+
+          <div class="section-title">Notes (Stakeholders Required to Evaluate)</div>
+          <textarea id="stakeholderNotes" placeholder="Capture who is required to evaluate, why they are required, and any access constraints…"></textarea>
+
+          <div class="section-title">Evaluation strategies (suggested)</div>
+          <div class="checklist" id="strategies"></div>
+
+          <div class="section-title">Notes</div>
+          <textarea id="notes" placeholder="Capture insights, barriers, assumptions, design changes, open questions…"></textarea>
+
+          <div class="actions">
+            <button id="copy">Copy summary</button>
+            <button id="download">Download summary (.txt)</button>
+            <button id="reset">Reset this outcome</button>
+          </div>
+          <div class="small" style="margin-top:8px">The exported summary is intended for lab notes / project logs (not a clinical decision tool).</div>
+        </div>
+
+        <div>
+          <div class="section-title">Quick radar (self-rating)</div>
+          <div class="small" style="margin-bottom:10px">Rate how “ready” your current concept is on each outcome (0–5). This is optional and for sensemaking only.</div>
+          <canvas id="radar" width="520" height="520"></canvas>
+          <div class="checklist" id="sliders" style="margin-top:10px"></div>
+          <div class="actions">
+            <button id="copyRadar">Copy ratings JSON</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div><strong>How to host:</strong> push this file to GitHub and enable GitHub Pages (see instructions in chat). You can rename this file to <code>index.html</code>.</div>
+</footer>
+
+<script>
+  // --- Framework content (editable) ---
+  const OUTCOMES = [
+    {
+      id: 'feasibility',
+      title: 'Feasibility',
+      stage: 'More directly measurable in mid-design',
+      definition: 'Extent to which an intervention/innovation can be successfully used or carried out within a given setting.',
+      stakeholders: [
+        'Technical experts (assess technical feasibility)',
+        'Future implementers (support eventual implementation)',
+        'Future users (e.g., clinicians)'
+      ],
+      strategies: [
+        'Semi-structured interviews (capability, resources, training, competing demands, burden)',
+        'Workflow analysis',
+        'Feasibility of Intervention Measure (FIM)',
+        'Readiness Thinking Tool (survey or observation guide)'
+      ],
+      tags: ['practicality', 'resources', 'capacity']
+    },
+    {
+      id: 'acceptability',
+      title: 'Acceptability',
+      stage: 'More directly measurable in mid-design',
+      definition: 'Perception among stakeholders that the innovation is agreeable, palatable, or satisfactory.',
+      stakeholders: [
+        'Technical experts',
+        'Subject matter experts (implemented similar interventions)',
+        'Future implementers',
+        'Future users (e.g., clinicians)'
+      ],
+      strategies: [
+        'Semi-structured interviews (satisfaction, comfort, willingness, perceived advantages, trust)',
+        'Technology Acceptance Model (TAM) measures (as relevant)',
+        'Acceptability of Intervention Measure (AIM)'
+      ],
+      tags: ['perceptions', 'comfort', 'willingness']
+    },
+    {
+      id: 'appropriateness',
+      title: 'Appropriateness',
+      stage: 'More directly measurable in mid-design',
+      definition: 'Perceived fit/relevance/compatibility of the innovation for the setting/provider/consumer and the problem addressed.',
+      stakeholders: [
+        'Subject matter experts',
+        'Future implementers',
+        'Future users (e.g., clinicians)',
+        'Future beneficiaries (e.g., patients)'
+      ],
+      strategies: [
+        'Semi-structured interviews (relevance, compatibility with standards, fit with workflows/values)',
+        'Intervention Appropriateness Measure (IAM)',
+        'Field observation (as feasible)'
+      ],
+      tags: ['fit', 'relevance', 'compatibility']
+    },
+    {
+      id: 'adoption',
+      title: 'Adoption',
+      stage: 'Exploratory in mid-design',
+      definition: 'Intention, initial decision, or action to try or employ an innovation.',
+      stakeholders: [
+        'Future users (e.g., clinicians)',
+        'Future beneficiaries (e.g., patients)',
+        'Organizational decision-makers (e.g., procurement)',
+        'Financial decision-makers (e.g., budget officers)'
+      ],
+      strategies: [
+        'Semi-structured interviews (relative advantage, complexity, readiness, approval conditions)',
+        'Predictor-based survey for anticipated adoption/uptake (as feasible)'
+      ],
+      tags: ['intention', 'uptake', 'decision-making']
+    },
+    {
+      id: 'implementation_cost',
+      title: 'Implementation cost',
+      stage: 'Exploratory in mid-design',
+      definition: 'Costs of the intervention and implementation strategy, influenced by local context and service delivery setting.',
+      stakeholders: [
+        'Organizational decision-makers',
+        'Management team (unit managers)',
+        'Front-line users (clinicians, nurses, support staff)',
+        'Future beneficiaries (patients)',
+        'Policy/economic environment stakeholders (reimbursement constraints)'
+      ],
+      strategies: [
+        'Local-level economic evaluation workflow (define perspective, use local data, scan cost drivers, validate assumptions)',
+        'Interviews (workflow/training/IT changes, staffing shifts, opportunity cost)',
+        'Document evidence review (budgets, staffing plans, procurement docs, workflow maps)'
+      ],
+      tags: ['economics', 'resourcing', 'business case']
+    },
+    {
+      id: 'fidelity',
+      title: 'Fidelity',
+      stage: 'Exploratory in mid-design',
+      definition: 'Degree to which an intervention is implemented as prescribed or intended (anticipate where drift/adaptation may occur).',
+      stakeholders: [
+        'Senior leadership / executive sponsors',
+        'Mid-level operational managers',
+        'Front-line users',
+        'Future beneficiaries (patients)'
+      ],
+      strategies: [
+        'Semi-structured interviews (core components, adaptations, delivery expectations, barriers)',
+        'Observation-based fidelity rating approaches (as feasible)',
+        'Fidelity scales relevant to the intervention type (if applicable)'
+      ],
+      tags: ['adherence', 'adaptations', 'core components']
+    },
+    {
+      id: 'penetration',
+      title: 'Penetration',
+      stage: 'Exploratory in mid-design',
+      definition: 'Integration of the practice within a service setting and subsystems, heavily influenced by context.',
+      stakeholders: [
+        'Senior leadership',
+        'Operational managers',
+        'Financial decision-makers',
+        'Clinical leadership',
+        'Implementation infrastructure (IT, informatics, analytics)',
+        'Front-line users'
+      ],
+      strategies: [
+        'Semi-structured interviews (barriers/facilitators, infrastructure, coordination, policy alignment, equity)',
+        'NPT/NoMAD-informed interview prompts or questionnaire (as relevant)',
+        'Pragmatic Context Assessment Tool (pCAT) (as feasible)'
+      ],
+      tags: ['integration', 'context', 'infrastructure']
+    },
+    {
+      id: 'sustainability',
+      title: 'Sustainability',
+      stage: 'Exploratory in mid-design',
+      definition: 'Extent to which a newly implemented treatment is maintained or institutionalized in stable operations.',
+      stakeholders: [
+        'Senior leadership',
+        'Operational managers',
+        'Financial decision-makers',
+        'Clinical leadership',
+        'Implementation infrastructure personnel',
+        'Front-line users'
+      ],
+      strategies: [
+        'Semi-structured interviews (strategic alignment, staffing, training, systems, adaptability)',
+        'Sustainability assessment tools (e.g., PRISM-aligned as relevant)',
+        'Document evidence review (SOPs, workflows, staffing plans, policy drafts)'
+      ],
+      tags: ['institutionalization', 'maintenance', 'leadership']
+    }
+  ];
+
+  // --- State ---
+  const LS_KEY = 'mdef_v1_state';
+  const state = loadState();
+  const byId = Object.fromEntries(OUTCOMES.map(o => [o.id, o]));
+
+  const el = {
+    q: document.getElementById('q'),
+    list: document.getElementById('list'),
+    countPill: document.getElementById('countPill'),
+    outcomeTitle: document.getElementById('outcomeTitle'),
+    stagePill: document.getElementById('stagePill'),
+    kvs: document.getElementById('kvs'),
+    definition: document.getElementById('definition'),
+    stakeholders: document.getElementById('stakeholders'),
+    strategies: document.getElementById('strategies'),
+    notes: document.getElementById('notes'),
+    copy: document.getElementById('copy'),
+    download: document.getElementById('download'),
+    reset: document.getElementById('reset'),
+    radar: document.getElementById('radar'),
+    sliders: document.getElementById('sliders'),
+    copyRadar: document.getElementById('copyRadar'),
+    stakeholderNotes: document.getElementById('stakeholderNotes')
+  };
+
+  // Default selection
+  if (!state.selected || !byId[state.selected]) state.selected = OUTCOMES[0].id;
+
+  // --- Render list ---
+  function renderList(){
+    const q = (el.q.value || '').trim().toLowerCase();
+    const filtered = OUTCOMES.filter(o => {
+      if (!q) return true;
+      return [o.title, o.definition, ...(o.tags||[]), ...(o.strategies||[])].join(' ').toLowerCase().includes(q);
+    });
+    el.countPill.textContent = `${filtered.length} outcomes`;
+    el.list.innerHTML = '';
+    for (const o of filtered){
+      const div = document.createElement('div');
+      div.className = 'item' + (o.id === state.selected ? ' active' : '');
+      div.onclick = () => { state.selected = o.id; persist(); renderAll(); };
+      div.innerHTML = `<div class="t">${o.title}</div><div class="d">${o.definition}</div>`;
+      el.list.appendChild(div);
+    }
+  }
+
+  // --- Render details ---
+  function renderDetails(){
+    const o = byId[state.selected];
+    el.outcomeTitle.textContent = o.title;
+    el.stagePill.textContent = o.stage || 'Mid-design';
+    el.definition.textContent = o.definition;
+
+    el.kvs.innerHTML = '';
+    (o.tags || []).forEach(t => {
+      const span = document.createElement('span');
+      span.className = 'tag';
+      span.textContent = t;
+      el.kvs.appendChild(span);
+    });
+
+    // Stakeholders checklist
+    el.stakeholders.innerHTML = '';
+    o.stakeholders.forEach((s, idx) => {
+      const key = `${o.id}::stake::${idx}`;
+      const checked = !!state.checks?.[key];
+      const lab = document.createElement('label');
+      lab.className = 'chk';
+      lab.innerHTML = `<input type="checkbox" ${checked?'checked':''} /> <span>${escapeHTML(s)}</span>`;
+      lab.querySelector('input').addEventListener('change', (e) => {
+        state.checks = state.checks || {};
+        state.checks[key] = e.target.checked;
+        persist();
+      });
+      el.stakeholders.appendChild(lab);
+    });
+
+    // Stakeholders: Others
+    {
+      const key = `${o.id}::stake::other`;
+      const checked = !!state.checks?.[key];
+      const lab = document.createElement('label');
+      lab.className = 'chk';
+      lab.style.alignItems = 'center';
+      const txt = escapeHTML(state.otherStakeholders?.[o.id] || '');
+      lab.innerHTML = `
+        <input type="checkbox" ${checked?'checked':''} />
+        <span style="min-width:72px">Others</span>
+        <input class="inline-input" id="stakeOther" placeholder="Type here…" value="${txt}" />
+      `;
+      const cb = lab.querySelector('input[type="checkbox"]');
+      const inp = lab.querySelector('#stakeOther');
+      cb.addEventListener('change', (e) => {
+        state.checks = state.checks || {};
+        state.checks[key] = e.target.checked;
+        persist();
+      });
+      inp.addEventListener('input', (e) => {
+        state.otherStakeholders = state.otherStakeholders || {};
+        state.otherStakeholders[o.id] = e.target.value;
+        persist();
+      });
+      el.stakeholders.appendChild(lab);
+    }
+
+    // Stakeholder notes
+    el.stakeholderNotes.value = state.stakeholderNotes?.[o.id] || '';
+    el.stakeholderNotes.oninput = () => {
+      state.stakeholderNotes = state.stakeholderNotes || {};
+      state.stakeholderNotes[o.id] = el.stakeholderNotes.value;
+      persist();
+    };
+
+    // Strategies checklist
+    el.strategies.innerHTML = '';
+    o.strategies.forEach((s, idx) => {
+      const key = `${o.id}::strat::${idx}`;
+      const checked = !!state.checks?.[key];
+      const lab = document.createElement('label');
+      lab.className = 'chk';
+      lab.innerHTML = `<input type="checkbox" ${checked?'checked':''} /> <span>${escapeHTML(s)}</span>`;
+      lab.querySelector('input').addEventListener('change', (e) => {
+        state.checks = state.checks || {};
+        state.checks[key] = e.target.checked;
+        persist();
+      });
+      el.strategies.appendChild(lab);
+    });
+
+    // Strategies: Others
+    {
+      const key = `${o.id}::strat::other`;
+      const checked = !!state.checks?.[key];
+      const lab = document.createElement('label');
+      lab.className = 'chk';
+      lab.style.alignItems = 'center';
+      const txt = escapeHTML(state.otherStrategies?.[o.id] || '');
+      lab.innerHTML = `
+        <input type="checkbox" ${checked?'checked':''} />
+        <span style="min-width:72px">Others</span>
+        <input class="inline-input" id="stratOther" placeholder="Type here…" value="${txt}" />
+      `;
+      const cb = lab.querySelector('input[type="checkbox"]');
+      const inp = lab.querySelector('#stratOther');
+      cb.addEventListener('change', (e) => {
+        state.checks = state.checks || {};
+        state.checks[key] = e.target.checked;
+        persist();
+      });
+      inp.addEventListener('input', (e) => {
+        state.otherStrategies = state.otherStrategies || {};
+        state.otherStrategies[o.id] = e.target.value;
+        persist();
+      });
+      el.strategies.appendChild(lab);
+    }
+
+    // Notes
+    el.notes.value = state.notes?.[o.id] || '';
+    el.notes.oninput = () => {
+      state.notes = state.notes || {};
+      state.notes[o.id] = el.notes.value;
+      persist();
+    };
+  }
+
+  // --- Export helpers ---
+  function buildSummary(){
+    const o = byId[state.selected];
+    const lines = [];
+    lines.push(`Mid-Design Evaluation Framework — Summary`);
+    lines.push(`Outcome: ${o.title}`);
+    lines.push(`Stage: ${o.stage}`);
+    lines.push(`Definition: ${o.definition}`);
+    lines.push('');
+
+    lines.push('Stakeholders consulted:');
+    o.stakeholders.forEach((s, idx) => {
+      const key = `${o.id}::stake::${idx}`;
+      const mark = state.checks?.[key] ? '☑' : '☐';
+      lines.push(`  ${mark} ${s}`);
+    });
+    // Others (stakeholders)
+    const otherStakeOn = !!state.checks?.[`${o.id}::stake::other`];
+    const otherStakeTxt = (state.otherStakeholders?.[o.id] || '').trim();
+    lines.push(`  ${otherStakeOn ? '☑' : '☐'} Others${otherStakeTxt ? ': ' + otherStakeTxt : ''}`);
+    lines.push('');
+
+    lines.push('Notes (Stakeholders Required to Evaluate):');
+    const sn = (state.stakeholderNotes?.[o.id] || '').trim();
+    lines.push(sn ? sn : '(none)');
+    lines.push('');
+
+    lines.push('Evaluation strategies used / planned:');
+    o.strategies.forEach((s, idx) => {
+      const key = `${o.id}::strat::${idx}`;
+      const mark = state.checks?.[key] ? '☑' : '☐';
+      lines.push(`  ${mark} ${s}`);
+    });
+    // Others (strategies)
+    const otherStratOn = !!state.checks?.[`${o.id}::strat::other`];
+    const otherStratTxt = (state.otherStrategies?.[o.id] || '').trim();
+    lines.push(`  ${otherStratOn ? '☑' : '☐'} Others${otherStratTxt ? ': ' + otherStratTxt : ''}`);
+    lines.push('');
+
+    const n = (state.notes?.[o.id] || '').trim();
+    lines.push('Notes:');
+    lines.push(n ? n : '(none)');
+
+    return lines.join('\n');
+  }
+
+  async function copyText(txt){
+    try{ await navigator.clipboard.writeText(txt); toast('Copied to clipboard'); }
+    catch(e){
+      // fallback
+      const ta = document.createElement('textarea');
+      ta.value = txt;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      toast('Copied to clipboard');
+    }
+  }
+
+  function downloadText(filename, txt){
+    const blob = new Blob([txt], {type:'text/plain;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // --- Radar ---
+  const RADAR_KEYS = OUTCOMES.map(o => o.id);
+
+  function ensureRatings(){
+    state.ratings = state.ratings || {};
+    for (const k of RADAR_KEYS){
+      if (typeof state.ratings[k] !== 'number') state.ratings[k] = 0;
+    }
+  }
+
+  function renderSliders(){
+    ensureRatings();
+    el.sliders.innerHTML='';
+    OUTCOMES.forEach(o => {
+      const wrap = document.createElement('div');
+      wrap.style.border = '1px solid rgba(233,236,255,.12)';
+      wrap.style.borderRadius='14px';
+      wrap.style.padding='10px';
+      wrap.style.background='rgba(0,0,0,.12)';
+
+      const row = document.createElement('div');
+      row.style.display='flex';
+      row.style.justifyContent='space-between';
+      row.style.gap='10px';
+      row.style.alignItems='center';
+
+      const left = document.createElement('div');
+      left.innerHTML = `<div style="font-weight:650">${o.title}</div><div class="small">0 (low) → 5 (high)</div>`;
+
+      const right = document.createElement('div');
+      right.style.minWidth='80px';
+      right.style.textAlign='right';
+      right.innerHTML = `<span class="pill">${state.ratings[o.id]}</span>`;
+
+      row.appendChild(left); row.appendChild(right);
+
+      const input = document.createElement('input');
+      input.type='range'; input.min='0'; input.max='5'; input.step='1';
+      input.value = String(state.ratings[o.id]);
+      input.style.width='100%';
+      input.oninput = () => {
+        state.ratings[o.id] = Number(input.value);
+        right.innerHTML = `<span class="pill">${state.ratings[o.id]}</span>`;
+        persist();
+        drawRadar();
+      };
+
+      wrap.appendChild(row);
+      wrap.appendChild(document.createElement('div')).style.height='8px';
+      wrap.appendChild(input);
+      el.sliders.appendChild(wrap);
+    });
+  }
+
+  function drawRadar(){
+    ensureRatings();
+    const ctx = el.radar.getContext('2d');
+    const W = el.radar.width, H = el.radar.height;
+    ctx.clearRect(0,0,W,H);
+
+    const cx = W/2, cy = H/2;
+    const r = Math.min(W,H)*0.36;
+
+    // grid rings (0-5)
+    for (let level=1; level<=5; level++){
+      const rr = r*(level/5);
+      polygon(ctx, cx, cy, rr, RADAR_KEYS.length, -Math.PI/2, true);
+      ctx.strokeStyle = 'rgba(15,23,42,.10)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // axes + labels
+    RADAR_KEYS.forEach((k, i) => {
+      const ang = -Math.PI/2 + i*(2*Math.PI/RADAR_KEYS.length);
+      const x = cx + r*Math.cos(ang);
+      const y = cy + r*Math.sin(ang);
+      ctx.beginPath();
+      ctx.moveTo(cx,cy); ctx.lineTo(x,y);
+      ctx.strokeStyle='rgba(15,23,42,.12)';
+      ctx.stroke();
+
+      // label
+      const label = byId[k].title;
+      ctx.fillStyle = 'rgba(15,23,42,.85)';
+      ctx.font = '12px ui-sans-serif, system-ui';
+      const lx = cx + (r+22)*Math.cos(ang);
+      const ly = cy + (r+22)*Math.sin(ang);
+      ctx.textAlign = Math.cos(ang) > 0.2 ? 'left' : (Math.cos(ang) < -0.2 ? 'right' : 'center');
+      ctx.textBaseline = Math.sin(ang) > 0.2 ? 'top' : (Math.sin(ang) < -0.2 ? 'bottom' : 'middle');
+      ctx.fillText(label, lx, ly);
+    });
+
+    // data polygon
+    const pts = RADAR_KEYS.map((k, i) => {
+      const v = state.ratings[k];
+      const rr = r*(v/5);
+      const ang = -Math.PI/2 + i*(2*Math.PI/RADAR_KEYS.length);
+      return [cx + rr*Math.cos(ang), cy + rr*Math.sin(ang)];
+    });
+
+    ctx.beginPath();
+    pts.forEach(([x,y], idx) => idx===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(15,23,42,.08)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(15,23,42,.35)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // points
+    pts.forEach(([x,y]) => {
+      ctx.beginPath();
+      ctx.arc(x,y,4,0,Math.PI*2);
+      ctx.fillStyle='rgba(15,23,42,.70)';
+      ctx.fill();
+    });
+
+    // center label
+    ctx.fillStyle='rgba(71,85,105,.9)';
+    ctx.font='12px ui-sans-serif, system-ui';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('0–5 readiness', cx, cy);
+  }
+
+  function polygon(ctx, cx, cy, r, n, startAng, close=true){
+    ctx.beginPath();
+    for (let i=0;i<n;i++){
+      const a = startAng + i*(2*Math.PI/n);
+      const x = cx + r*Math.cos(a);
+      const y = cy + r*Math.sin(a);
+      if (i===0) ctx.moveTo(x,y);
+      else ctx.lineTo(x,y);
+    }
+    if (close) ctx.closePath();
+  }
+
+  // --- Persistence ---
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(LS_KEY);
+      return raw ? JSON.parse(raw) : { checks:{}, notes:{}, ratings:{}, selected:null };
+    }catch(e){
+      return { checks:{}, notes:{}, ratings:{}, selected:null };
+    }
+  }
+  function persist(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+
+  // --- Utils ---
+  function escapeHTML(s){
+    return String(s)
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;');
+  }
+
+  function toast(msg){
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.position='fixed';
+    t.style.left='50%';
+    t.style.bottom='20px';
+    t.style.transform='translateX(-50%)';
+    t.style.padding='10px 14px';
+    t.style.borderRadius='14px';
+    t.style.border='1px solid rgba(15,23,42,.18)';
+    t.style.background='rgba(15,23,42,.08)';
+    t.style.color='rgba(15,23,42,.95)';
+    t.style.zIndex='9999';
+    document.body.appendChild(t);
+    setTimeout(()=>{ t.remove(); }, 1500);
+  }
+
+  // --- Wire up actions ---
+  el.q.addEventListener('input', renderList);
+
+  el.copy.onclick = () => copyText(buildSummary());
+  el.download.onclick = () => {
+    const o = byId[state.selected];
+    downloadText(`mdef_${o.id}_summary.txt`, buildSummary());
+  };
+  el.reset.onclick = () => {
+    const o = byId[state.selected];
+    // clear checks and notes for this outcome
+    const nextChecks = {};
+    for (const [k,v] of Object.entries(state.checks || {})){
+      if (!k.startsWith(o.id + '::')) nextChecks[k] = v;
+    }
+    state.checks = nextChecks;
+    state.notes = state.notes || {};
+    state.notes[o.id] = '';
+    persist();
+    renderAll();
+    toast('Reset');
+  };
+
+  el.copyRadar.onclick = () => {
+    ensureRatings();
+    const payload = {
+      scale: '0-5',
+      ratings: OUTCOMES.map(o => ({ id:o.id, title:o.title, rating: state.ratings[o.id] }))
+    };
+    copyText(JSON.stringify(payload, null, 2));
+  };
+
+  function renderAll(){
+    renderList();
+    renderDetails();
+    renderSliders();
+    drawRadar();
+  }
+
+  renderAll();
+</script>
+</body>
+</html>
