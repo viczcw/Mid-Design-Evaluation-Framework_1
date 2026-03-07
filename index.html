@@ -1,226 +1,862 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mid-Design Implementation Evaluation Framework</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .outcome-card {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .outcome-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        }
-        .instrument-link {
-            text-decoration: underline;
-            color: #2563eb;
-            font-weight: 500;
-            cursor: pointer;
-        }
-        .instrument-link:hover {
-            color: #1d4ed8;
-        }
-        .direct-measure { background-color: #f0f9ff; border-left: 6px solid #0ea5e9; }
-        .exploratory-measure { background-color: #f8fafc; border-left: 6px solid #64748b; }
-    </style>
-</head>
-<body class="bg-gray-50 text-gray-900 font-sans leading-normal">
+import React, { useState, useMemo } from "react";
+import {
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+} from "recharts";
+import {
+  Info,
+  Users,
+  ClipboardCheck,
+  TrendingUp,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  AlertCircle,
+  CheckCircle2,
+  BookOpen,
+  Target,
+  MessageSquare,
+  FileText,
+  ExternalLink,
+  Eye,
+  Search,
+} from "lucide-react";
 
-    <div class="max-w-6xl mx-auto px-4 py-12">
-        <!-- Header Section -->
-        <header class="mb-12 text-center">
-            <h1 class="text-4xl font-extrabold text-gray-900 mb-4 tracking-tight">Mid-Design Implementation Evaluation Framework</h1>
-            <p class="text-lg text-gray-600 max-w-3xl mx-auto">
-                A structured decision-support tool to assess implementation outcomes before full-scale clinical rollout. 
-                Identify barriers, integration challenges, and resource demands proactively.
-            </p>
+const OUTCOMES = [
+  {
+    id: "feasibility",
+    label: "Feasibility",
+    color: "#3b82f6",
+    description:
+      "“the extent to which a new treatment, or an innovation, can be successfully used or carried out within a given agency or setting.”",
+    gatherPerspectives:
+      "Gather perspectives on feasibility from key stakeholder groups:",
+    stakeholders: [
+      "Technical experts (i.e., those who can assess the technical feasibility of the intervention)",
+      "Future implementers (i.e., those who will support eventual implementation)",
+      "Future users (e.g., clinicians)",
+    ],
+    strategies: [
+      {
+        type: "interview",
+        title: "Semi-structured interview",
+        topics: [
+          "Practical capability for carrying out the design",
+          "Resource availability (e.g., time, staffing, equipment, infrastructure)",
+          "Training and skill sufficiency",
+          "Competing demands and capacity constraints",
+          "Ease or difficulty of execution in routine practice",
+          "Perceived implementation burden",
+        ],
+      },
+      {
+        type: "survey",
+        title: "Standardized Measurement Tools",
+        tools: [
+          {
+            name: "Workflow Analysis",
+            description:
+              "Evaluates how the intervention fits within existing clinical processes and identifies potential bottlenecks.",
+          },
+          {
+            name: "Feasibility of Intervention Measure (FIM)",
+            description:
+              "A 4-item instrument designed to assess the extent to which an intervention can be successfully used.",
+          },
+          {
+            name: "Readiness Thinking Tool (Survey)",
+            description:
+              "Assesses organizational and individual readiness to adopt the new intervention.",
+          },
+          {
+            name: "Readiness Thinking Tool (Observation Guide)",
+            description:
+              "A structured guide for observing environmental factors that impact feasibility.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "acceptability",
+    label: "Acceptability",
+    color: "#60a5fa",
+    description:
+      "“the perception among implementation stakeholders that a given treatment, service, practice, or innovation is agreeable, palatable, or satisfactory.”",
+    gatherPerspectives:
+      "Gather perspectives on acceptability from key stakeholder groups:",
+    stakeholders: [
+      "Technical experts",
+      "Subject matter experts (SMEs)",
+      "Future implementers",
+      "Future users (e.g., clinicians)",
+      "Future beneficiaries (e.g., patients)",
+    ],
+    strategies: [
+      {
+        type: "interview",
+        title: "Semi-structured interview",
+        topics: [
+          "Overall satisfaction",
+          "Emotional reactions",
+          "Perceived comfort",
+          "Alignment with person preferences",
+          "Willingness for engagement",
+          "Perceived advantages",
+          "Trust and confidence",
+        ],
+      },
+      {
+        type: "survey",
+        title: "Standardized Measurement Tools",
+        tools: [
+          {
+            name: "Individual-Level Technology Acceptance Model (TAM)",
+            description:
+              "Measures perceived usefulness and perceived ease of use for technology-based interventions.",
+          },
+          {
+            name: "Acceptability of Intervention Measure (AIM)",
+            description:
+              "A brief 4-item scale that captures how agreeable or satisfactory a stakeholder finds the intervention.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "appropriateness",
+    label: "Appropriateness",
+    color: "#93c5fd",
+    description:
+      "“the perceived fit, relevance, or compatibility of the innovation or evidence based practice for a given practice setting; and/or perceived fit to address a particular issue.”",
+    gatherPerspectives:
+      "Gather perspectives on appropriateness from key stakeholder groups:",
+    stakeholders: [
+      "Subject matter experts (SMEs)",
+      "Future implementers",
+      "Future users",
+      "Future beneficiaries",
+    ],
+    strategies: [
+      {
+        type: "interview",
+        title: "Semi-structured interview",
+        topics: [
+          "Relevance to the clinical problem or population",
+          "Compatibility with organizational missions or values",
+          "Fit within existing clinical models or standards of care",
+          "Perceived effectiveness for addressing the targeted issue",
+          "Suitability for the local practice environment",
+          "Congruence with stakeholder expectations",
+        ],
+      },
+      {
+        type: "survey",
+        title: "Standardized Measurement Tools",
+        tools: [
+          {
+            name: "Intervention Appropriateness Measure (IAM)",
+            description:
+              "Quantifies the perceived fit or relevance of the intervention to the specific setting.",
+          },
+        ],
+      },
+      {
+        type: "observation",
+        title: "Field Observation",
+        tools: [
+          {
+            name: "Field Observation Framework",
+            description:
+              "Direct observation to assess integration of pre-patient-reported outcome measurements.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "adoption",
+    label: "Adoption",
+    color: "#bfdbfe",
+    description:
+      "“the intention, initial decision, or action to try or employ an innovation or evidence-based practice.”",
+    gatherPerspectives:
+      "Gather perspectives on expected or anticipated adoption from key stakeholder groups:",
+    stakeholders: [
+      "Future users",
+      "Future beneficiaries",
+      "Organizational decision-makers",
+      "Financial decision-makers",
+    ],
+    strategies: [
+      {
+        type: "interview",
+        title: "Semi-structured interview",
+        topics: [
+          "Perceived relative advantage",
+          "Compatibility with current workflow",
+          "Perceived complexity or burden",
+          "Resource requirements",
+          "Organizational readiness",
+          "Social and professional norms",
+          "Conditions for approval and rejection",
+        ],
+      },
+      {
+        type: "survey",
+        title: "Standardized Measurement Tools",
+        tools: [
+          {
+            name: "Multi-level forecasting measures",
+            description:
+              "A predictor-based survey used to anticipate uptake across different organizational levels.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "cost",
+    label: "Implementation Cost",
+    color: "#1e3a8a",
+    description:
+      "“the cost impact of an implementation effort... depends upon the particular intervention, the strategy used, and the location of service delivery.”",
+    gatherPerspectives:
+      "Gather perspectives on anticipated implementation cost from stakeholders:",
+    stakeholders: [
+      "Organizational leaders",
+      "Management team",
+      "Front-line users",
+      "Future beneficiaries",
+      "Policy/economic stakeholders",
+    ],
+    strategies: [
+      {
+        type: "interview",
+        title: "Local-level Economic Framework",
+        topics: [
+          "Define analytic perspective (organization, unit, patient)",
+          "Use local operational data (staffing, wage scales)",
+          "Pragmatic literature scan for cost drivers",
+          "Convene stakeholder working group to validate assumptions",
+        ],
+      },
+      {
+        type: "interview",
+        title: "Semi-structured interview",
+        topics: [
+          "Expected workflow changes",
+          "Training burden and frequency",
+          "Required staffing shifts",
+          "IT/Infrastructure changes",
+          "Maintenance requirements",
+          "Opportunity cost",
+        ],
+      },
+      {
+        type: "survey",
+        title: "Projection Tools",
+        tools: [
+          {
+            name: "Stage-Based Implementation Cost Projection Tool",
+            description:
+              "Adapted from SIC and COINS to map implementation resources across different stages.",
+          },
+        ],
+      },
+      {
+        type: "review",
+        title: "Document Evidence Review",
+        tools: [
+          {
+            name: "Financial Review Protocol",
+            description:
+              "Review of budget allocations, wage schedules, procurement docs, and maintenance contracts.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "fidelity",
+    label: "Fidelity",
+    color: "#1e40af",
+    description:
+      "“the degree to which an intervention was implemented as it was prescribed in the original protocol or as it was intended.”",
+    gatherPerspectives:
+      "Gather perspectives on anticipated fidelity from stakeholder groups:",
+    stakeholders: [
+      "Senior leadership",
+      "Mid-level operational managers",
+      "Front-line users",
+      "Future beneficiaries",
+    ],
+    strategies: [
+      {
+        type: "interview",
+        title: "Semi-structured interview",
+        topics: [
+          "Adherence to core components",
+          "Dose and reach expectations",
+          "Anticipated adaptations and modifications",
+          "Potential barriers to protocol adherence",
+          "Differentiation from existing practice",
+        ],
+      },
+      {
+        type: "observation",
+        title: "Field Observation",
+        tools: [
+          {
+            name: "Fidelity of Implementation Rating System (FIMP)",
+            description:
+              "An observation-based measure of competent adherence to the implementation model.",
+          },
+        ],
+      },
+      {
+        type: "survey",
+        title: "Standardized Measurement Tools",
+        tools: [
+          {
+            name: "Individual Placement and Support (IPS) Fidelity Scales",
+            description:
+              "Validated scales to monitor adherence to core evidence-based practice components.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "penetration",
+    label: "Penetration",
+    color: "#1e3a8a",
+    description:
+      "“the integration of a practice within a service setting and its subsystems,” linked to and influenced by its context.",
+    gatherPerspectives:
+      "Gather perspectives on anticipated penetration from stakeholder groups:",
+    stakeholders: [
+      "Senior leadership",
+      "Mid-level managers",
+      "Financial decision-makers",
+      "Clinical leadership",
+      "Implementation infrastructure personnel",
+    ],
+    strategies: [
+      {
+        type: "interview",
+        title: "Semi-structured interview",
+        topics: [
+          "Barriers and facilitators to integration",
+          "Contextual conditions and equity considerations",
+          "Implementation infrastructure readiness",
+          "Interdepartmental coordination",
+          "Policy alignment and misalignment",
+        ],
+      },
+      {
+        type: "survey",
+        title: "Normalization Process Theory (NPT)",
+        tools: [
+          {
+            name: "Normalization Process Theory Interview Guide",
+            description:
+              "A coding guide for interviews focused on how interventions become routine.",
+          },
+          {
+            name: "NoMAD Questionnaire",
+            description:
+              "A survey measuring the implementation work based on NPT constructs.",
+          },
+          {
+            name: "Pragmatic Context Assessment Tool (pCAT)",
+            description:
+              "An assessment of contextual barriers to change using a Think Aloud method.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "sustainability",
+    label: "Sustainability",
+    color: "#172554",
+    description:
+      "“the extent to which a newly implemented treatment is maintained or institutionalized within ongoing, stable operations.”",
+    gatherPerspectives:
+      "Gather perspectives on anticipated sustainability from stakeholder groups:",
+    stakeholders: [
+      "Senior leadership",
+      "Mid-level managers",
+      "Financial decision-makers",
+      "Clinical leadership",
+      "Implementation personnel",
+      "Front-line users",
+    ],
+    strategies: [
+      {
+        type: "interview",
+        title: "Semi-structured interview",
+        topics: [
+          "Strategic alignment and financial institutionalization",
+          "Role formalization and infrastructure maintenance",
+          "Training and knowledge transfer plans",
+          "Adaptability and maintenance of leadership continuity",
+        ],
+      },
+      {
+        type: "survey",
+        title: "Sustainability Assessment",
+        tools: [
+          {
+            name: "PRISM Infrastructure Assessment",
+            description:
+              "A practical, robust model for evaluating sustainability infrastructure.",
+          },
+        ],
+      },
+      {
+        type: "review",
+        title: "Document Evidence Review",
+        tools: [
+          {
+            name: "Policy and Workflow Audit",
+            description:
+              "Review of policy drafts, standard operating procedures, and staffing plans.",
+          },
+        ],
+      },
+    ],
+  },
+];
+
+export default function App() {
+  const [scores, setScores] = useState({
+    feasibility: 3,
+    acceptability: 3,
+    appropriateness: 3,
+    adoption: 3,
+    cost: 3,
+    fidelity: 3,
+    penetration: 3,
+    sustainability: 3,
+  });
+  const [notes, setNotes] = useState({});
+  const [expandedId, setExpandedId] = useState(null);
+
+  const chartData = useMemo(() => {
+    return OUTCOMES.map((o) => ({
+      subject: o.label,
+      A: scores[o.id],
+      fullMark: 5,
+    }));
+  }, [scores]);
+
+  const handleScoreChange = (id, val) =>
+    setScores((p) => ({ ...p, [id]: parseInt(val) }));
+  const handleNoteChange = (id, val) => setNotes((p) => ({ ...p, [id]: val }));
+
+  const toggleExpand = (id) => setExpandedId(expandedId === id ? null : id);
+
+  const getInterpretation = () => {
+    const avg = Object.values(scores).reduce((a, b) => a + b, 0) / 8;
+    if (avg >= 4.5)
+      return {
+        text: "Strong readiness for implementation.",
+        color: "text-green-600",
+        bg: "bg-green-50",
+        border: "border-green-200",
+        icon: <CheckCircle2 className="w-5 h-5" />,
+      };
+    if (avg >= 3)
+      return {
+        text: "Moderate readiness; minor refinements suggested.",
+        color: "text-blue-600",
+        bg: "bg-blue-50",
+        border: "border-blue-200",
+        icon: <Info className="w-5 h-5" />,
+      };
+    return {
+      text: "Significant barriers identified; proactive design iteration recommended.",
+      color: "text-amber-600",
+      bg: "bg-amber-50",
+      border: "border-amber-200",
+      icon: <AlertCircle className="w-5 h-5" />,
+    };
+  };
+
+  const getStrategyIcon = (type) => {
+    switch (type) {
+      case "interview":
+        return <MessageSquare className="w-4 h-4" />;
+      case "survey":
+        return <FileText className="w-4 h-4" />;
+      case "observation":
+        return <Eye className="w-4 h-4" />;
+      case "review":
+        return <Search className="w-4 h-4" />;
+      default:
+        return <Target className="w-4 h-4" />;
+    }
+  };
+
+  const interpretation = getInterpretation();
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <header className="mb-10 border-b border-slate-200 pb-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 mb-2">
+                Mid-Design Evaluation Framework
+              </h1>
+              <p className="text-slate-500 max-w-4xl text-base italic leading-relaxed">
+                A structured decision-support tool to proactively assess
+                implementation outcomes and refine medical innovations before
+                full-scale rollout. Identify potential barriers and resource
+                demands during early or mid-stage design.
+              </p>
+              <p className="text-xs text-slate-400 mt-2">© Chuwen Zheng</p>
+            </div>
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-2 bg-white border border-slate-300 px-5 py-2.5 rounded-xl hover:bg-slate-50 transition shadow-sm text-sm font-semibold text-slate-700"
+            >
+              <Download className="w-4 h-4" /> Export Report
+            </button>
+          </div>
         </header>
 
-        <!-- Legend -->
-        <div class="flex flex-wrap justify-center gap-6 mb-10">
-            <div class="flex items-center gap-2">
-                <span class="w-4 h-4 rounded bg-sky-100 border-l-4 border-sky-500"></span>
-                <span class="text-sm font-medium text-gray-700">Directly Measurable (Design Focus)</span>
-            </div>
-            <div class="flex items-center gap-2">
-                <span class="w-4 h-4 rounded bg-slate-100 border-l-4 border-slate-500"></span>
-                <span class="text-sm font-medium text-gray-700">Exploratory (Strategy Focus)</span>
-            </div>
-        </div>
-
-        <!-- Dashboard Grid -->
-        <div id="framework-grid" class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <!-- Content generated by JavaScript -->
-        </div>
-
-        <!-- Reference Section -->
-        <footer class="mt-20 pt-8 border-t border-gray-200">
-            <h2 class="text-xl font-bold mb-4">Core References</h2>
-            <div id="references" class="text-sm text-gray-500 space-y-2 max-h-60 overflow-y-auto pr-4">
-                <!-- References generated by JavaScript -->
-            </div>
-        </footer>
-    </div>
-
-    <script>
-        const frameworkData = [
-            {
-                outcome: "Feasibility",
-                definition: "The extent to which a new treatment can be successfully used or carried out within a given agency or setting.",
-                type: "direct",
-                stakeholders: ["Technical experts", "Future implementers", "Future users (clinicians)"],
-                interviewTopics: ["Practical capability", "Resource availability (time, staff, equipment)", "Training sufficiency", "Ease of execution", "Perceived burden"],
-                strategies: [
-                    { name: "Feasibility of Intervention Measure (FIM)", link: "https://doi.org/10.1186/s13012-017-0635-3" },
-                    { name: "Readiness Thinking Tool", link: "https://doi.org/10.1177/15248399221080096" },
-                    { name: "Workflow Analysis", link: null }
-                ]
-            },
-            {
-                outcome: "Acceptability",
-                definition: "The perception among stakeholders that a given innovation is agreeable, palatable, or satisfactory.",
-                type: "direct",
-                stakeholders: ["Technical/Subject experts", "Future implementers", "Future users", "Future beneficiaries (patients)"],
-                interviewTopics: ["Overall satisfaction", "Emotional reactions", "Perceived comfort", "Alignment with preferences", "Trust and confidence"],
-                strategies: [
-                    { name: "Acceptability of Intervention Measure (AIM)", link: "https://doi.org/10.1186/s13012-017-0635-3" },
-                    { name: "Technology Acceptance Model (TAM)", link: "https://doi.org/10.1055/s-0038-1668091" }
-                ]
-            },
-            {
-                outcome: "Appropriateness",
-                definition: "The perceived fit, relevance, or compatibility of the innovation for a given setting, provider, or consumer.",
-                type: "direct",
-                stakeholders: ["Subject matter experts", "Future implementers/users", "Patients"],
-                interviewTopics: ["Relevance to clinical problem", "Compatibility with values", "Fit within clinical models", "Perceived necessity"],
-                strategies: [
-                    { name: "Intervention Appropriateness Measure (IAM)", link: "https://doi.org/10.1186/s13012-017-0635-3" },
-                    { name: "Field Observation Framework", link: "https://doi.org/10.1186/s43058-026-00859-5" }
-                ]
-            },
-            {
-                outcome: "Adoption",
-                definition: "The intention, initial decision, or action to try or employ an innovation.",
-                type: "direct",
-                stakeholders: ["Clinicians", "Patients", "Organizational & Financial decision-makers"],
-                interviewTopics: ["Relative advantage", "Complexity or burden", "Organizational readiness", "Conditions for approval/rejection"],
-                strategies: [
-                    { name: "Multi-level Forecasting Measures", link: "https://doi.org/10.1007/s10488-014-0551-7" }
-                ]
-            },
-            {
-                outcome: "Implementation Cost",
-                definition: "The cost impact of implementation, including the intervention, strategy, and delivery location.",
-                type: "exploratory",
-                stakeholders: ["Management teams", "Front-line users", "Finance/Policy stakeholders"],
-                interviewTopics: ["Workflow changes", "Training burden", "IT/Infrastructure changes", "Opportunity cost"],
-                strategies: [
-                    { name: "SIC and COINS Tools", link: "https://doi.org/10.1016/j.childyouth.2013.10.006" },
-                    { name: "Local-level Economic Evaluation Framework", link: "https://doi.org/10.1017/S0266462323002775" }
-                ]
-            },
-            {
-                outcome: "Fidelity",
-                definition: "Degree to which an intervention was implemented as prescribed in the original protocol.",
-                type: "exploratory",
-                stakeholders: ["Senior leadership", "Mid-level managers", "Front-line users", "Patients"],
-                interviewTopics: ["Adherence to core components", "Dose and reach", "Adaptations", "Barriers to adherence"],
-                strategies: [
-                    { name: "Fidelity of Implementation Rating System (FIMP)", link: "https://doi.org/10.1016/S0005-7894(05)80049-8" },
-                    { name: "IPS Fidelity Scales", link: "https://doi.org/10.1176/appi.ps.201100476" }
-                ]
-            },
-            {
-                outcome: "Penetration",
-                definition: "The integration of a practice within a service setting and its subsystems.",
-                type: "exploratory",
-                stakeholders: ["Implementation infrastructure", "Clinical governance", "IT/Informatics"],
-                interviewTopics: ["Interdepartmental coordination", "Equity considerations", "Policy alignment", "Contextual conditions"],
-                strategies: [
-                    { name: "NoMAD Questionnaire (NPT)", link: "https://doi.org/10.1186/s12874-018-0591-x" },
-                    { name: "Pragmatic Context Assessment Tool (pCAT)", link: "https://doi.org/10.1186/s43058-022-00380-5" }
-                ]
-            },
-            {
-                outcome: "Sustainability",
-                definition: "Extent to which a treatment is maintained or institutionalized within stable operations.",
-                type: "exploratory",
-                stakeholders: ["Senior leadership", "Financial decision-makers", "Clinical leadership"],
-                interviewTopics: ["Strategic alignment", "Financial institutionalization", "Role formalization", "Knowledge transfer"],
-                strategies: [
-                    { name: "PRISM Assessment", link: "https://doi.org/10.1016/S1553-7250(08)34030-6" }
-                ]
-            }
-        ];
-
-        const refs = [
-            "1. Lewis CC, et al. Outcomes for implementation science. Implement Sci. 2015;10(1):155.",
-            "2. Proctor E, et al. Outcomes for Implementation Research. Adm Policy Ment Health. 2011;38(2):65-76.",
-            "3. Weiner BJ, et al. Psychometric assessment of AIM, IAM, FIM. Implement Sci. 2017;12(1):108.",
-            "4. Kenworthy T, et al. Building Capacity of TA Providers. Health Promot Pract. 2023.",
-            "5. Rahimi B, et al. Systematic Review of TAM in Health. Appl Clin Inform. 2018.",
-            "6. Kaur MN, et al. Field observation for PROMs. Implement Sci Commun. 2026.",
-            "7. Chor KHB, et al. Measures for Predictors of Adoption. Adm Policy Ment Health. 2015.",
-            "8. Eisman AB, et al. Implementation science issues in cost estimates. Implement Sci. 2021.",
-            "10. Gray J, et al. Framework for local-level economic evaluation. Int J Technol Assess Health Care. 2023.",
-            "12. Saldana L, et al. The cost of implementing new strategies (COINS). Child Youth Serv Rev. 2014.",
-            "15. Bond GR, et al. Validation of Revised IPS Fidelity Scale. Psychiatr Serv. 2012.",
-            "17. Forgatch MS, et al. Evaluating fidelity (FIMP). Behav Ther. 2005.",
-            "21. Finch TL, et al. NoMAD instrument validation (NPT). BMC Med Res Methodol. 2018.",
-            "22. Feldstein AC, Glasgow RE. PRISM Model. Jt Comm J Qual Patient Saf. 2008."
-        ];
-
-        function renderFramework() {
-            const grid = document.getElementById('framework-grid');
-            grid.innerHTML = frameworkData.map(item => `
-                <div class="outcome-card p-6 rounded-xl border border-gray-200 shadow-sm ${item.type === 'direct' ? 'direct-measure' : 'exploratory-measure'}">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-xl font-bold text-gray-800">${item.outcome}</h3>
-                        <span class="text-xs uppercase tracking-wider font-semibold text-gray-500">
-                            ${item.type === 'direct' ? 'Mid-Design Measurable' : 'Exploratory'}
-                        </span>
-                    </div>
-                    <p class="text-sm italic text-gray-600 mb-4">"${item.definition}"</p>
-                    
-                    <div class="mb-4">
-                        <h4 class="text-xs font-bold text-gray-700 uppercase mb-2">Stakeholders</h4>
-                        <div class="flex flex-wrap gap-2">
-                            ${item.stakeholders.map(s => `<span class="bg-white/80 px-2 py-1 rounded text-xs border border-gray-100 shadow-sm">${s}</span>`).join('')}
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <h4 class="text-xs font-bold text-gray-700 uppercase mb-2">Evaluation Instruments</h4>
-                        <ul class="space-y-1">
-                            ${item.strategies.map(s => `
-                                <li class="text-sm">
-                                    ${s.link ? `<a href="${s.link}" target="_blank" class="instrument-link">${s.name}</a>` : `<span class="text-gray-500">${s.name}</span>`}
-                                </li>
-                            `).join('')}
-                        </ul>
-                    </div>
-
-                    <details class="text-sm">
-                        <summary class="cursor-pointer font-medium text-blue-600 hover:text-blue-800 focus:outline-none">View Interview Topics</summary>
-                        <ul class="mt-2 list-disc list-inside text-gray-600 space-y-1 bg-white/50 p-3 rounded">
-                            ${item.interviewTopics.map(topic => `<li>${topic}</li>`).join('')}
-                        </ul>
-                    </details>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <div className="lg:col-span-7 space-y-10">
+            <section>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <BookOpen className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-800">
+                    Outcome Details & Strategies
+                  </h2>
                 </div>
-            `).join('');
-        }
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  Click cards to explore strategies
+                </span>
+              </div>
 
-        function renderReferences() {
-            const refList = document.getElementById('references');
-            refList.innerHTML = refs.map(r => `<p>${r}</p>`).join('');
-        }
+              <div className="space-y-4">
+                {OUTCOMES.map((o) => (
+                  <div
+                    key={o.id}
+                    className={`bg-white rounded-2xl border transition-all duration-300 ${
+                      expandedId === o.id
+                        ? "shadow-xl border-blue-200 ring-1 ring-blue-50"
+                        : "shadow-sm border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <button
+                      onClick={() => toggleExpand(o.id)}
+                      className="w-full text-left p-5 flex items-center justify-between group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div
+                          className="w-3 h-3 rounded-full shadow-sm"
+                          style={{ backgroundColor: o.color }}
+                        />
+                        <h3 className="text-lg font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
+                          {o.label}
+                        </h3>
+                      </div>
+                      <div
+                        className={`p-2 rounded-full transition-colors ${
+                          expandedId === o.id
+                            ? "bg-blue-50 text-blue-600"
+                            : "bg-slate-50 text-slate-400"
+                        }`}
+                      >
+                        {expandedId === o.id ? (
+                          <ChevronUp className="w-5 h-5" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5" />
+                        )}
+                      </div>
+                    </button>
 
-        window.onload = () => {
-            renderFramework();
-            renderReferences();
-        };
-    </script>
-</body>
-</html>
+                    {expandedId === o.id && (
+                      <div className="px-6 pb-6 pt-2">
+                        <div className="h-px bg-slate-100 mb-6" />
+
+                        <div className="space-y-8">
+                          <div>
+                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2 flex items-center gap-2">
+                              <Info className="w-3 h-3" /> Definition
+                            </h4>
+                            <p className="text-slate-700 italic border-l-4 border-blue-100 pl-4 py-1 leading-relaxed bg-blue-50/30 rounded-r-lg">
+                              {o.description}
+                            </p>
+                          </div>
+
+                          <div>
+                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-3 flex items-center gap-2">
+                              <Users className="w-3 h-3" /> Stakeholders
+                            </h4>
+                            <p className="text-sm font-bold text-slate-800 mb-3">
+                              {o.gatherPerspectives}
+                            </p>
+                            <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+                              {o.stakeholders.map((s, i) => (
+                                <li
+                                  key={i}
+                                  className="text-sm text-slate-600 flex items-start gap-2"
+                                >
+                                  <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
+                                  <span>{s}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          <div className="space-y-4">
+                            <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-4 flex items-center gap-2">
+                              <Target className="w-3 h-3" /> Evaluation Strategies
+                            </h4>
+
+                            <div className="grid grid-cols-1 gap-6">
+                              {o.strategies.map((strat, sIdx) => (
+                                <div
+                                  key={sIdx}
+                                  className="bg-slate-50 p-5 rounded-2xl border border-slate-100"
+                                >
+                                  <div className="flex items-center gap-2 mb-4">
+                                    <div className="p-1.5 bg-white rounded-lg shadow-sm text-blue-500">
+                                      {getStrategyIcon(strat.type)}
+                                    </div>
+                                    <h4 className="text-sm font-bold text-slate-800 uppercase tracking-tight">
+                                      {strat.title}
+                                    </h4>
+                                  </div>
+
+                                  {strat.topics && (
+                                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                                      {strat.topics.map((topic, i) => (
+                                        <li
+                                          key={i}
+                                          className="text-xs text-slate-600 flex items-start gap-3"
+                                        >
+                                          <div className="mt-1.5 w-1 h-1 rounded-full bg-slate-300 flex-shrink-0" />
+                                          <span>{topic}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+
+                                  {strat.tools && (
+                                    <div className="space-y-3">
+                                      {strat.tools.map((tool, i) => (
+                                        <div
+                                          key={i}
+                                          className="group/item border-l-2 border-white pl-4 py-1 hover:border-blue-200 transition-colors"
+                                        >
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-xs font-bold text-slate-700">
+                                              {tool.name}
+                                            </span>
+                                            <button className="text-[9px] flex items-center gap-1 text-blue-500 font-bold hover:underline opacity-0 group-hover/item:opacity-100 transition-opacity">
+                                              <ExternalLink className="w-2.5 h-2.5" /> Source
+                                            </button>
+                                          </div>
+                                          <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                                            {tool.description}
+                                          </p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="pt-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-slate-800 rounded-lg text-white">
+                  <ClipboardCheck className="w-5 h-5" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800">
+                  Interactive Readiness Table
+                </h2>
+              </div>
+
+              <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-900 text-white">
+                  <h3 className="font-bold flex items-center gap-2 text-sm">
+                    <Target className="w-4 h-4 text-blue-400" />
+                    Quantify Outcomes
+                  </h3>
+                  <span className="text-[9px] font-black bg-white/10 px-3 py-1 rounded-full text-blue-200 uppercase tracking-[0.2em]">
+                    1: Low — 5: High
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50/50 text-slate-400 text-[10px] font-black uppercase tracking-[0.15em]">
+                        <th className="px-8 py-5">Criterion</th>
+                        <th className="px-8 py-5">Score</th>
+                        <th className="px-8 py-5">Implementation Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {OUTCOMES.map((outcome) => (
+                        <tr
+                          key={outcome.id}
+                          className="hover:bg-slate-50/50 transition-colors"
+                        >
+                          <td className="px-8 py-6">
+                            <span className="font-bold text-slate-700 text-sm">
+                              {outcome.label}
+                            </span>
+                          </td>
+                          <td className="px-8 py-6">
+                            <div className="flex items-center gap-1.5">
+                              {[1, 2, 3, 4, 5].map((val) => (
+                                <button
+                                  key={val}
+                                  onClick={() =>
+                                    handleScoreChange(outcome.id, val)
+                                  }
+                                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all duration-200 flex items-center justify-center ${
+                                    scores[outcome.id] === val
+                                      ? "bg-blue-600 text-white shadow-lg shadow-blue-200 -translate-y-0.5"
+                                      : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                  }`}
+                                >
+                                  {val}
+                                </button>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-8 py-6">
+                            <input
+                              type="text"
+                              value={notes[outcome.id] || ""}
+                              onChange={(e) =>
+                                handleNoteChange(outcome.id, e.target.value)
+                              }
+                              placeholder="Notes on barriers or fit..."
+                              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-xs focus:bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div className="lg:col-span-5">
+            <div className="bg-white rounded-[2rem] shadow-2xl border border-slate-200 p-8 sticky top-8">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-lg font-black uppercase tracking-tight text-slate-800">
+                  Readiness Matrix
+                </h2>
+                <div className="bg-blue-100 p-2 rounded-xl">
+                  <TrendingUp className="w-5 h-5 text-blue-600" />
+                </div>
+              </div>
+
+              <div className="w-full h-[360px] mb-8 bg-slate-50/50 rounded-2xl p-4 border border-slate-100">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart
+                    cx="50%"
+                    cy="50%"
+                    outerRadius="80%"
+                    data={chartData}
+                  >
+                    <PolarGrid stroke="#E2E8F0" />
+                    <PolarAngleAxis
+                      dataKey="subject"
+                      tick={{ fill: "#64748B", fontSize: 10, fontWeight: 700 }}
+                    />
+                    <PolarRadiusAxis
+                      angle={30}
+                      domain={[0, 5]}
+                      tick={false}
+                      stroke="none"
+                    />
+                    <Radar
+                      name="Score"
+                      dataKey="A"
+                      stroke="#1D4ED8"
+                      strokeWidth={3}
+                      fill="#3B82F6"
+                      fillOpacity={0.5}
+                    />
+                    <RechartsTooltip />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">
+                    Readiness Summary
+                  </h3>
+                  <div
+                    className={`p-6 rounded-[1.5rem] border-2 transition-all duration-500 flex items-start gap-4 ${interpretation.bg} ${interpretation.border}`}
+                  >
+                    <div className={interpretation.color}>{interpretation.icon}</div>
+                    <div>
+                      <h4 className={`font-bold mb-1 ${interpretation.color}`}>
+                        Assessment Result
+                      </h4>
+                      <p className="text-sm text-slate-700 leading-relaxed font-medium">
+                        {interpretation.text}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">
+                      Avg Score
+                    </span>
+                    <span className="text-2xl font-black text-slate-800">
+                      {(Object.values(scores).reduce((a, b) => a + b, 0) / 8).toFixed(1)}
+                    </span>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">
+                      Status
+                    </span>
+                    <span className={`text-sm font-bold truncate block ${interpretation.color}`}>
+                      Ready
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
